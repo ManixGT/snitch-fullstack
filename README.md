@@ -1,9 +1,3 @@
-Here’s a `README.md` file for your **Snitch Clothing E-Commerce Website** project built using the **MERN stack**:
-
----
-
-### ✅ `README.md`
-
 ```markdown
 # 🧥 Snitch - E-Commerce Clothing Website
 
