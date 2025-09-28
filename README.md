@@ -130,7 +130,4 @@ npm run dev
 
 > **Name**: _Suryamani Gupta_ > **Role**: Full Stack Developer
 > **Date Started**: Thursday, 25th Sept 2025
-
-```
-
-```
+> **Contacts**: manigupta28201@gmail.com.
