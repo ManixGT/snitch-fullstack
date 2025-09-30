@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { Heart, AlertCircle } from "lucide-react";
 import { Link } from "react-router-dom";
+import toast from "react-hot-toast";
 
 
 const ProductGrid = () => {
@@ -11,28 +12,9 @@ const ProductGrid = () => {
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [favorites, setFavorites] = useState(() => {
-    // Load favorites from localStorage on initialization
-    try {
-      const saved = localStorage.getItem('favorites');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
   const [page, setPage] = useState(1);
-
   const loadMoreRef = useRef(null);
   const ITEMS_PER_PAGE = 20;
-
-  // Persist favorites to localStorage
-  useEffect(() => {
-    try {
-      localStorage.setItem('favorites', JSON.stringify(favorites));
-    } catch (error) {
-      console.warn('Could not save favorites to localStorage:', error);
-    }
-  }, [favorites]);
 
   // Enhanced API calls with better error handling
   const fetchWithRetry = async (url, retries = 3) => {
@@ -74,6 +56,37 @@ const ProductGrid = () => {
     }
   }, []);
 
+  //Add to cart
+  const handleAddToCart = async (productId) => {
+    try {
+      const token = localStorage.getItem('token'); // or your token storage method
+
+      const response = await fetch(`${import.meta.env.VITE_addToCart}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}` // Add the token
+        },
+        body: JSON.stringify({
+          productId: productId,
+          quantity: 1
+        }),
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        toast.success(result.message || "Product added to cart!");
+      } else {
+        toast.error(result.message || "Failed to add to cart.");
+      }
+    } catch (err) {
+      toast.error("Something went wrong while adding to cart.");
+      console.error(err);
+    }
+  };
+
+
   // Initial data loading
   useEffect(() => {
     const loadInitialData = async () => {
@@ -81,7 +94,7 @@ const ProductGrid = () => {
       await Promise.all([getCategories(), getProducts()]);
       setInitialLoading(false);
     };
-
+    handleAddToCart();
     loadInitialData();
   }, [getCategories, getProducts]);
 
@@ -148,13 +161,13 @@ const ProductGrid = () => {
     };
   }, [loadMore, loading, initialLoading]);
 
-  const toggleFavorite = useCallback((productId) => {
-    setFavorites(prev =>
-      prev.includes(productId)
-        ? prev.filter(id => id !== productId)
-        : [...prev, productId]
-    );
-  }, []);
+  // const toggleFavorite = useCallback((productId) => {
+  //   setFavorites(prev =>
+  //     prev.includes(productId)
+  //       ? prev.filter(id => id !== productId)
+  //       : [...prev, productId]
+  //   );
+  // }, []);
 
   // Memoized computed values
   const hasMoreProducts = displayedProducts.length < filteredProducts.length;
@@ -252,19 +265,16 @@ const ProductGrid = () => {
                     e.target.src = "/no-image.png";
                   }}
                 />
-                <button
-                  onClick={() => toggleFavorite(product._id || product.id)}
-                  className="absolute top-0 right-0 p-2"
-                  aria-label={favorites.includes(product._id || product.id) ? "Remove from favorites" : "Add to favorites"}
-                >
-                  <Heart
-                    className={`w-4 h-4 transition-all duration-200 ${favorites.includes(product._id || product.id)
-                      ? "text-red-500 fill-red-500"
-                      : "text-gray-600 hover:text-red-500"
-                      }`}
-                  />
-                </button>
               </Link>
+              <button
+                onClick={() => handleAddToCart(product._id)}
+                className="absolute top-0 right-0 p-2"
+                aria-label="Add to cart"
+                title="Add to Cart"
+              >
+                <Heart className="w-4 h-4 text-gray-600 hover:text-red-500 transition-all duration-200" />
+              </button>
+
             </div>
 
             <div className="mt-3 space-y-1">

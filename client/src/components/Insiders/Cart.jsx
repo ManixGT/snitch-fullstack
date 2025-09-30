@@ -1,61 +1,120 @@
-import React, { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Trash2, Heart, Plus, Minus, Gift } from 'lucide-react';
 
-// Mock cart data - you'll get this from your API/context
-const mockCartItems = [
-  {
-    id: 1,
-    name: "Blue Grey Regular Fit Shirt",
-    image: "/api/placeholder/150/180",
-    size: "L",
-    color: "Blue Grey",
-    quantity: 1,
-    price: 1199,
-    originalPrice: 1299,
-    discount: 100
-  }
-];
-
 const Cart = () => {
-  const [cartItems, setCartItems] = useState([]); // Start empty, change to mockCartItems to see filled state
+  const [cartItems, setCartItems] = useState([]);
   const [showCoupons, setShowCoupons] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   // Cart calculations
   const bagTotal = cartItems.reduce((total, item) => total + (item.originalPrice * item.quantity), 0);
   const totalDiscount = cartItems.reduce((total, item) => total + (item.discount * item.quantity), 0);
-  const couponDiscount = 0; // You can add coupon logic
+  const couponDiscount = 0;
   const grandTotal = bagTotal - totalDiscount - couponDiscount;
 
+  // Fetch cart items
+  const fetchCartItem = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem("token");
+      const response = await fetch(import.meta.env.VITE_getCart, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
+      });
+      if (!response.ok) throw new Error('Failed to fetch cart');
+      const data = await response.json();
+      setCartItems(data?.products);
+    } catch (error) {
+      console.error('Error fetching cart:', error);
+      setCartItems([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // useEffect(() => {
+  //   fetchCartItem();
+  // }, []);
+
   // Update quantity
-  const updateQuantity = (id, newQuantity) => {
+  const updateQuantity = async (id, newQuantity) => {
     if (newQuantity === 0) {
       removeItem(id);
       return;
     }
+
+    // Optimistic update
     setCartItems(prev =>
       prev.map(item =>
         item.id === id ? { ...item, quantity: newQuantity } : item
       )
     );
+
+    // API call to update quantity
+    try {
+      await fetch(`${import.meta.env.VITE_updateCartItem}/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ quantity: newQuantity })
+      });
+    } catch (error) {
+      console.error('Error updating quantity:', error);
+      fetchCartItem();
+    }
   };
 
   // Remove item
-  const removeItem = (id) => {
+  const removeItem = async (id) => {
+    // Optimistic update
     setCartItems(prev => prev.filter(item => item.id !== id));
+
+    // API call to remove item
+    try {
+      await fetch(`${import.meta.env.VITE_removeCartItem}/${id}`, {
+        method: 'DELETE'
+      });
+    } catch (error) {
+      console.error('Error removing item:', error);
+      // Revert on error
+      fetchCartItem();
+    }
   };
 
   // Move to wishlist
-  const moveToWishlist = (id) => {
-    // Add your wishlist logic here
-    console.log('Moving to wishlist:', id);
-    removeItem(id);
+  const moveToWishlist = async (id) => {
+    try {
+      // Add to wishlist API call
+      await fetch(import.meta.env.VITE_addToWishlist, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ productId: id })
+      });
+
+      // Remove from cart
+      removeItem(id);
+    } catch (error) {
+      console.error('Error moving to wishlist:', error);
+    }
   };
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-gray-300 border-t-black rounded-full animate-spin"></div>
+      </div>
+    );
+  }
 
   // Empty Cart State
   if (cartItems.length === 0) {
     return (
-      <div className="bg-white flex items-center justify-center max-w-full">
-        <div className="w-[60%] text-center px-4">
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="w-full max-w-md text-center px-4 py-12">
           <div className="mb-6">
             <img
               src="/assets/empty_bag.png"
@@ -63,6 +122,9 @@ const Cart = () => {
               width={200}
               height={200}
               className="mx-auto"
+              onError={(e) => {
+                e.target.src = '/api/placeholder/200/200';
+              }}
             />
           </div>
 
@@ -70,44 +132,51 @@ const Cart = () => {
             Your bag is empty
           </h2>
 
-          <p className="text-black mt-8 text-xs">
+          <p className="text-gray-600 mt-4 mb-8 text-sm">
             Your cart is ready to roll, but it's feeling a bit empty without some stylish finds.
           </p>
 
-          <div className="flex flex-col md:flex md:flex-row items-center pb-2 px-4 md:gap-x-2">
-            <button
-              onClick={() => setCartItems(mockCartItems)} // Demo: Add items to cart
-              className="transition uppercase w-full py-3  text-white bg-black hover:bg-gray-800"
-            >
-              Start Shopping
-            </button>
-            <button className="transition uppercase w-full py-3 text-black bg-white border border-black hover:bg-gray-200 mt-2 md:mt-0">
-              Add From Wishlist
-            </button>
+          <div className="flex flex-col md:flex-row gap-3">
+            <Link to="/" className="flex-1">
+              <button className="w-full py-3 text-white bg-black hover:bg-gray-800 transition-colors uppercase font-medium">
+                Start Shopping
+              </button>
+            </Link>
+            <Link to="/wishlist" className="flex-1">
+              <button className="w-full py-3 text-black bg-white border border-black hover:bg-gray-100 transition-colors uppercase font-medium">
+                Add From Wishlist
+              </button>
+            </Link>
           </div>
         </div>
       </div>
     );
   }
 
-  // Filled Cart State (only one return statement remains)
+  // Filled Cart State
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-6xl mx-auto px-4">
-        <h1 className="text-2xl font-bold mb-8">Shopping Cart ({cartItems.length} item{cartItems.length > 1 ? 's' : ''})</h1>
+        <h1 className="text-2xl font-bold mb-8">
+          Shopping Cart ({cartItems.length} item{cartItems.length > 1 ? 's' : ''})
+        </h1>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Cart Items */}
           <div className="lg:col-span-2 space-y-4">
             {cartItems.map((item) => (
-              <div key={item.id} className="bg-white rounded-lg p-6 shadow-sm">
+
+              <div key={item.id || item._id} className="bg-white rounded-lg p-6 shadow-sm">
                 <div className="flex gap-4">
                   {/* Product Image */}
                   <div className="relative flex-shrink-0">
                     <img
-                      src={item.image}
+                      src={item.image || item.images?.[0] || '/no-image.png'}
                       alt={item.name}
                       className="w-24 h-28 object-cover rounded"
+                      onError={(e) => {
+                        e.target.src = '/no-image.png';
+                      }}
                     />
                     {/* Timer badge */}
                     <div className="absolute bottom-0 left-0 right-0 bg-black/80 text-white text-xs py-1 px-2 text-center">
@@ -120,8 +189,8 @@ const Cart = () => {
                     <div className="flex justify-between items-start mb-2">
                       <h3 className="font-medium text-gray-900">{item.name}</h3>
                       <button
-                        onClick={() => removeItem(item.id)}
-                        className="text-gray-400 hover:text-red-500"
+                        onClick={() => removeItem(item.id || item._id)}
+                        className="text-gray-400 hover:text-red-500 transition-colors"
                       >
                         <Trash2 className="w-5 h-5" />
                       </button>
@@ -134,8 +203,8 @@ const Cart = () => {
                     <div className="flex items-center justify-between">
                       {/* Move to Wishlist */}
                       <button
-                        onClick={() => moveToWishlist(item.id)}
-                        className="flex items-center text-sm text-gray-600 hover:text-black"
+                        onClick={() => moveToWishlist(item.id || item._id)}
+                        className="flex items-center text-sm text-gray-600 hover:text-black transition-colors"
                       >
                         <Heart className="w-4 h-4 mr-1" />
                         MOVE TO WISHLIST
@@ -146,22 +215,28 @@ const Cart = () => {
                         <div className="text-right">
                           <div className="flex items-center gap-2">
                             <span className="text-lg font-bold">₹{item.price}</span>
-                            <span className="text-sm text-gray-500 line-through">₹{item.originalPrice}</span>
+                            {item.originalPrice && (
+                              <span className="text-sm text-gray-500 line-through">
+                                ₹{item.originalPrice}
+                              </span>
+                            )}
                           </div>
                         </div>
 
                         {/* Quantity Controls */}
                         <div className="flex items-center border border-gray-300 rounded">
                           <button
-                            onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                            className="p-2 hover:bg-gray-100"
+                            onClick={() => updateQuantity(item.id || item._id, item.quantity - 1)}
+                            className="p-2 hover:bg-gray-100 transition-colors"
                           >
                             <Minus className="w-4 h-4" />
                           </button>
-                          <span className="px-3 py-2 min-w-[40px] text-center">{item.quantity}</span>
+                          <span className="px-3 py-2 min-w-[40px] text-center">
+                            {item.quantity}
+                          </span>
                           <button
-                            onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                            className="p-2 hover:bg-gray-100"
+                            onClick={() => updateQuantity(item.id || item._id, item.quantity + 1)}
+                            className="p-2 hover:bg-gray-100 transition-colors"
                           >
                             <Plus className="w-4 h-4" />
                           </button>
@@ -192,7 +267,9 @@ const Cart = () => {
 
                 {showCoupons && (
                   <div className="mt-4 p-4 bg-gray-50 rounded">
-                    <p className="text-sm text-gray-600">Please login to view available coupons and gift cards.</p>
+                    <p className="text-sm text-gray-600">
+                      Please login to view available coupons and gift cards.
+                    </p>
                   </div>
                 )}
               </div>

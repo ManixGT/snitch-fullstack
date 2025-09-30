@@ -244,7 +244,7 @@ const ProductDetailPage = () => {
               </div>
             )}
 
-            <Link to="/cart">
+            <Link to={`/cart/${id}`}>
               <button className="w-full bg-black text-white py-4 font-semibold text-lg hover:bg-gray-800 transition-colors cursor-pointer">
                 ADD TO BAG
               </button>

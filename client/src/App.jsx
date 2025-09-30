@@ -12,6 +12,7 @@ import Cart from "./components/Insiders/Cart.jsx";
 import Account from "./components/Account/index.jsx"
 import AuthModal from "./components/Auth/index.jsx"
 import { useState } from "react";
+import { Toaster } from "react-hot-toast";
 
 // Layout component - uses useLocation hook
 const Layout = ({ children, onSidebarOpen, sidebarOpen, setSidebarOpen, onAuthButtonClick }) => {
@@ -47,11 +48,11 @@ const Layout = ({ children, onSidebarOpen, sidebarOpen, setSidebarOpen, onAuthBu
 const HomePage = () => {
   return (
     <div className="mx-5">
-
       <HeroSwiper />
       <FeaturedCategories />
       <PromotionalBanner />
       <ProductGrid />
+      <Toaster position="top-center" />
     </div>
   );
 };
@@ -101,6 +102,7 @@ const App = () => {
           onClose={() => setIsAuthModalOpen(false)}
           onLoginSuccess={handleLoginSuccess}
         />
+        <Toaster position="top-center" />
       </Layout>
     </Router>
   );
